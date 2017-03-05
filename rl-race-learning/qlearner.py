@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 from struct import pack, unpack
 from typing import List, Iterable
 
@@ -9,7 +10,7 @@ import math
 
 from keras.engine import Model
 from keras.layers import Convolution2D, Flatten, Dense
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.optimizers import RMSprop
 
 
@@ -149,6 +150,8 @@ class RandomActionPolicy:
 
 class QLearner:
 
+    MODEL_PATH = 'actionValue.model'
+
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float):
         self.environment = environment
@@ -157,7 +160,10 @@ class QLearner:
         self.batch_size = batch_size
         self.discount = discount
         self.memory = Memory(memory_capacity)
-        self.model = self._create_model()
+        if Path(self.MODEL_PATH).is_file():
+            self.model = load_model(self.MODEL_PATH)
+        else:
+            self.model = self._create_model()
 
     def _create_model(self) -> Model:
         model = Sequential()
@@ -226,6 +232,7 @@ class QLearner:
                 frames_passed += 1
                 if frames_passed % 1000 == 0:
                     print('Completed {} frames'.format(frames_passed))
+                    self.model.save(self.MODEL_PATH)
 
 
 if __name__ == '__main__':
