@@ -3,11 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class CarController : MonoBehaviour {
+	
 	public List<AxleInfo> axleInfos; // the information about each individual axle
 	public float maxMotorTorque; // maximum torque the motor can apply to wheel
 	public float maxSteeringAngle; // maximum steer angle the wheel can have
 
 	private bool appliedManualAction = false;
+	private Rigidbody body;
 
 	// finds the corresponding visual wheel
 	// correctly applies the transform
@@ -36,6 +38,14 @@ public class CarController : MonoBehaviour {
 			ApplyAction(vertical, horizontal);
 			appliedManualAction = true;
 		}
+	}
+
+	public void Start() {
+		body = GetComponent<Rigidbody>();
+	}
+
+	public float GetVelocity() {
+		return (transform.worldToLocalMatrix * body.velocity).z;
 	}
 
 	public void ApplyAction(float vertical, float horizontal)

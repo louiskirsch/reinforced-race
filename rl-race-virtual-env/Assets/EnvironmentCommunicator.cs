@@ -84,10 +84,13 @@ public class EnvironmentCommunicator : MonoBehaviour {
 
 	private void SendSensorData(int imageWidth, int imageHeight) {
 		cameraSensor.TakePicture(image => {
-			byte[] responseBuffer = new byte[2 + imageWidth * imageHeight];
+			byte[] responseBuffer = new byte[6 + imageWidth * imageHeight];
 			BinaryWriter writer = new BinaryWriter(new MemoryStream(responseBuffer));
 			writer.Write(carState.Disqualified);
 			writer.Write(carState.Finished);
+			// We can't transfer floating point values, so let's transmit velocity * 2^16
+			int velocity = IPAddress.HostToNetworkOrder((int)(carController.GetVelocity() * 0xffff));
+			writer.Write(velocity);
 			carState.ResetState();
 			writer.Write(PackCameraImage(image));
 			client.socket.BeginSend(responseBuffer, 0, responseBuffer.Length, 0, new AsyncCallback(SendCallback), client);

@@ -5,6 +5,7 @@ from typing import List, Iterable
 import numpy as np
 import random
 import socket
+import math
 
 from keras.engine import Model
 from keras.layers import Convolution2D, Flatten, Dense
@@ -51,6 +52,10 @@ class State:
         self.is_terminal = is_terminal
 
 
+def sigmoid(x: float) -> float:
+    return 1 / (1 + math.exp(-x))
+
+
 class EnvironmentInterface:
 
     REQUEST_READ_SENSORS = 1
@@ -61,30 +66,31 @@ class EnvironmentInterface:
         self.socket.connect((host, port))
 
     @staticmethod
-    def _calc_reward(disqualified: bool, finished: bool, action: Action) -> float:
+    def _calc_reward(disqualified: bool, finished: bool, velocity: float) -> float:
         if disqualified:
             return -1e+4
         if finished:
             return 0
-        if action.vertical == 1:
-            return -0.5
-        return -1
+        # If velocity = 0 then reward = -1 otherwise get closer to 0
+        return sigmoid(velocity / 2) * 2 - 2
 
-    def read_sensors(self, width: int, height: int, action: Action) -> (State, int):
+    def read_sensors(self, width: int, height: int) -> (State, int):
         request = pack('!bii', self.REQUEST_READ_SENSORS, width, height)
         self.socket.sendall(request)
 
-        # Response size: disqualified, finished, camera_image
-        response_size = width * height + 2
+        # Response size: disqualified, finished, velocity, camera_image
+        response_size = width * height + 2 + 4
         response_buffer = bytes()
         while len(response_buffer) < response_size:
             response_buffer += self.socket.recv(response_size - len(response_buffer))
 
-        disqualified, finished = unpack('!??', response_buffer[:2])
-        camera_image = np.frombuffer(response_buffer[2:], dtype=np.byte)
+        disqualified, finished, velocity = unpack('!??i', response_buffer[:6])
+        # Velocity is encoded as x * 2^16
+        velocity /= 0xffff
+        camera_image = np.frombuffer(response_buffer[6:], dtype=np.byte)
         camera_image = np.reshape(camera_image, (height, width), order='C')
 
-        reward = self._calc_reward(disqualified, finished, action)
+        reward = self._calc_reward(disqualified, finished, velocity)
 
         return State(camera_image, disqualified or finished), reward
 
@@ -204,7 +210,7 @@ class QLearner:
         for episode in range(1, episodes + 1):
             print('Running episode {}'.format(episode))
             # Set initial state
-            state = self.environment.read_sensors(self.image_size, self.image_size, Action.none())[0]
+            state = self.environment.read_sensors(self.image_size, self.image_size)[0]
             while not state.is_terminal:
                 if random.random() < self.random_action_policy.get_probability(frames_passed):
                     action = Action.random()
@@ -213,7 +219,7 @@ class QLearner:
                     action = Action.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
                 self._train_minibatch()
-                new_state, reward = self.environment.read_sensors(self.image_size, self.image_size, action)
+                new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
                 state = new_state
