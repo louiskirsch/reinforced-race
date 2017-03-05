@@ -4,7 +4,7 @@ A model car learns driving along a track using reinforcement learning
 ## Unity virtual environment
 
 This is a virtual environment the car can learn to drive in.
-Built with Unity it enables you to test your new paramters, tracks and algorithms before you take your car out to reality.
+Built with Unity it enables you to test your new parameters, tracks and algorithms before you take your car out to reality.
 
 Open the [Unity](https://unity3d.com/) project in `rl-race-virtual-env` and run the game, then start the learning algorithm.
 
