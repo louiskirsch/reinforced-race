@@ -78,7 +78,6 @@ public class EnvironmentCommunicator : MonoBehaviour {
 		if (bytesRead > 0) {
 			client.bytesLeft = bytesRead;
 			client.requestPending = true;
-			Debug.Log("Received new message from client");
 		}
 	}
 
@@ -95,12 +94,10 @@ public class EnvironmentCommunicator : MonoBehaviour {
 			writer.Write(PackCameraImage(image));
 			client.socket.BeginSend(responseBuffer, 0, responseBuffer.Length, 0, new AsyncCallback(SendCallback), client);
 		}, imageWidth, imageHeight);
-		Debug.Log("Sending sensor data to client");
 	}
 
 	private void ApplyAction(int vertical, int horizontal) {
 		carController.ApplyAction(vertical, horizontal);
-		Debug.Log("Applying new action received from client");
 	}
 
 	void Update() {
