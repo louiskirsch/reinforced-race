@@ -143,8 +143,6 @@ class Experience:
         file_paths = sorted(directory.glob('{}*{}'.format(cls.FILE_PREFIX, cls.FILE_SUFFIX)),
                             key=file_date)
 
-        print(file_paths)
-
         for file_path in file_paths[-count:]:
             with file_path.open('rb') as file:
                 experiences.append(pickle.load(file))
