@@ -105,7 +105,7 @@ class EnvironmentInterface:
         disqualified, finished, velocity = unpack('!??i', response_buffer[:6])
         # Velocity is encoded as x * 2^16
         velocity /= 0xffff
-        camera_image = np.frombuffer(response_buffer[6:], dtype=np.byte)
+        camera_image = np.frombuffer(response_buffer[6:], dtype=np.uint8)
         camera_image = np.reshape(camera_image, (height, width), order='C')
 
         reward = self._calc_reward(disqualified, finished, velocity)
