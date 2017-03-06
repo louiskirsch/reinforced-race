@@ -1,0 +1,5 @@
+# Ignore model files
+*.model
+
+# Ignore stored experiences
+*.pickle
