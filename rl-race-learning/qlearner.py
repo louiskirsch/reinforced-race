@@ -230,7 +230,7 @@ class QLearner:
         model.add(Convolution2D(32, 4, 4, activation='relu', border_mode='same', subsample=(2, 2)))
         model.add(Flatten())
         model.add(Dense(256, activation='relu'))
-        model.add(Dense(self.action_type.COUNT, activation='softmax'))
+        model.add(Dense(self.action_type.COUNT, activation='linear'))
         model.compile(optimizer=RMSprop(), loss='mse', metrics=['mean_squared_error'])
         return model
 
