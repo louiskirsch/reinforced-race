@@ -128,6 +128,7 @@ class Experience:
         self.action = action
         self.reward = reward
         self.to_state = to_state
+        self.store_path = None
 
     @classmethod
     def load_many(cls, count: int):
@@ -149,19 +150,25 @@ class Experience:
 
         return experiences
 
+    def delete(self):
+        if self.store_path is not None and self.store_path.is_file():
+            self.store_path.unlink()
+
     def save(self):
         Path(self.OUTPUT_DIR).mkdir(exist_ok=True)
         path = Path('{}/{}{:d}{}'.format(self.OUTPUT_DIR, self.FILE_PREFIX, int(time.time() * 1000), self.FILE_SUFFIX))
         with path.open('wb') as file:
             pickle.dump(self, file)
+        self.store_path = path
 
 
 class Memory:
 
-    def __init__(self, capacity: int):
+    def __init__(self, capacity: int, preserve_to_disk: bool):
         self.experiences = []
         self.capacity = capacity
         self.write_position = 0
+        self.preserve_to_disk = preserve_to_disk
 
     def load(self):
         self.experiences = Experience.load_many(self.capacity)
@@ -170,10 +177,17 @@ class Memory:
     def append_experience(self, experience: Experience):
         if self.write_position >= self.capacity:
             self.write_position = 0
+
         if self.write_position >= len(self.experiences):
             self.experiences.append(experience)
         else:
+            old_experience = self.experiences[self.write_position]
+            if self.preserve_to_disk:
+                old_experience.delete()
             self.experiences[self.write_position] = experience
+
+        if self.preserve_to_disk:
+            experience.save()
         self.write_position += 1
 
     def __len__(self):
@@ -211,11 +225,10 @@ class QLearner:
         self.image_size = image_size
         self.batch_size = batch_size
         self.discount = discount
-        self.save_memory = save_memory
         self.action_type = action_type
         self.min_memory_training = min_memory_training
 
-        self.memory = Memory(memory_capacity)
+        self.memory = Memory(memory_capacity, save_memory)
         if load_memory:
             self.memory.load()
 
@@ -277,8 +290,8 @@ class QLearner:
                 action = self.action_type.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
-                if self.save_memory:
-                    Experience(state, action, reward, new_state).save()
+                experience = Experience(state, action, reward, new_state)
+                self.memory.append_experience(experience)
                 state = new_state
 
     def start_training(self, episodes: int):
@@ -298,8 +311,6 @@ class QLearner:
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
-                if self.save_memory:
-                    experience.save()
                 state = new_state
                 frames_passed += 1
                 if frames_passed % 1000 == 0:
