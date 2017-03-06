@@ -269,6 +269,17 @@ class QLearner:
         x, y = self._generate_minibatch()
         self.model.train_on_batch(x, y)
 
+    def predict(self):
+        while True:
+            state = self.environment.read_sensors(self.image_size, self.image_size)[0]
+            while not state.is_terminal:
+                action = self.action_type.from_code(np.argmax(self._predict(state)))
+                self.environment.write_action(action)
+                new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
+                if self.save_memory:
+                    Experience(state, action, reward, new_state).save()
+                state = new_state
+
     def start_training(self, episodes: int):
         frames_passed = 0
         for episode in range(1, episodes + 1):
@@ -327,6 +338,8 @@ if __name__ == '__main__':
     parser.add_argument('--always-forward', dest='action_type', action='store_const',
                         default=Action, const=LeftRightAction,
                         help='Whether the car should always move forward')
+    parser.add_argument('--no-training', dest='training_enabled', action='store_false',
+                        help='Only drive model car, do not learn')
     args = parser.parse_args()
 
     environment = EnvironmentInterface(args.host, args.port)
@@ -342,4 +355,10 @@ if __name__ == '__main__':
                        args.load_memory,
                        args.save_memory,
                        args.action_type)
-    learner.start_training(args.episodes)
+
+    if args.training_enabled:
+        print("Start training")
+        learner.start_training(args.episodes)
+    else:
+        print("Start driving (without training)")
+        learner.predict()
