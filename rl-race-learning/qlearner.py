@@ -205,7 +205,7 @@ class QLearner:
 
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
-                 load_memory: bool, save_memory: bool, action_type: Any):
+                 load_memory: bool, save_memory: bool, action_type: Any, min_memory_training: int):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
@@ -213,6 +213,7 @@ class QLearner:
         self.discount = discount
         self.save_memory = save_memory
         self.action_type = action_type
+        self.min_memory_training = min_memory_training
 
         self.memory = Memory(memory_capacity)
         if load_memory:
@@ -264,7 +265,7 @@ class QLearner:
         return x, y
 
     def _train_minibatch(self):
-        if len(self.memory) == 0:
+        if len(self.memory) < self.min_memory_training:
             return
         x, y = self._generate_minibatch()
         self.model.train_on_batch(x, y)
@@ -335,6 +336,8 @@ if __name__ == '__main__':
                         help='Whether to load stored memory')
     parser.add_argument('--save-memory', dest='save_memory', action='store_true',
                         help='Whether to save memory')
+    parser.add_argument('--min-memory', dest='min_memory_training', type=int, default=1,
+                        help='The minimum memory size before training starts')
     parser.add_argument('--always-forward', dest='action_type', action='store_const',
                         default=Action, const=LeftRightAction,
                         help='Whether the car should always move forward')
@@ -354,7 +357,8 @@ if __name__ == '__main__':
                        args.discount,
                        args.load_memory,
                        args.save_memory,
-                       args.action_type)
+                       args.action_type,
+                       args.min_memory_training)
 
     if args.training_enabled:
         print("Start training")
