@@ -3,11 +3,13 @@ from pathlib import Path
 from struct import pack, unpack
 from typing import List, Iterable
 
-import numpy as np
 import random
 import socket
 import math
+import pickle
+import numpy as np
 
+import time
 from keras.engine import Model
 from keras.layers import Convolution2D, Flatten, Dense
 from keras.models import Sequential, load_model
@@ -102,11 +104,43 @@ class EnvironmentInterface:
 
 class Experience:
 
+    OUTPUT_DIR = 'experiences'
+    FILE_PREFIX = 'experience-'
+    FILE_SUFFIX = '.pickle'
+
     def __init__(self, from_state: State, action: Action, reward: float, to_state: State):
         self.from_state = from_state
         self.action = action
         self.reward = reward
         self.to_state = to_state
+
+    @classmethod
+    def load_many(cls, count: int):
+        experiences = []
+        directory = Path(cls.OUTPUT_DIR)
+
+        if not directory.is_dir():
+            return experiences
+
+        def file_date(fp: Path):
+            return int(fp.stem[len(cls.FILE_PREFIX):])
+
+        file_paths = sorted(directory.glob('{}*{}'.format(cls.FILE_PREFIX, cls.FILE_SUFFIX)),
+                            key=file_date)
+
+        print(file_paths)
+
+        for file_path in file_paths[-count:]:
+            with file_path.open('rb') as file:
+                experiences.append(pickle.load(file))
+
+        return experiences
+
+    def save(self):
+        Path(self.OUTPUT_DIR).mkdir(exist_ok=True)
+        path = Path('{}/{}{:d}{}'.format(self.OUTPUT_DIR, self.FILE_PREFIX, int(time.time() * 1000), self.FILE_SUFFIX))
+        with path.open('wb') as file:
+            pickle.dump(self, file)
 
 
 class Memory:
@@ -115,6 +149,10 @@ class Memory:
         self.experiences = []
         self.capacity = capacity
         self.write_position = 0
+
+    def load(self):
+        self.experiences = Experience.load_many(self.capacity)
+        self.write_position = len(self.experiences)
 
     def append_experience(self, experience: Experience):
         if self.write_position >= self.capacity:
@@ -153,13 +191,19 @@ class QLearner:
     MODEL_PATH = 'actionValue.model'
 
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
-                 random_action_policy: RandomActionPolicy, batch_size: int, discount: float):
+                 random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
+                 load_memory: bool, save_memory: bool):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
         self.batch_size = batch_size
         self.discount = discount
+        self.save_memory = save_memory
+
         self.memory = Memory(memory_capacity)
+        if load_memory:
+            self.memory.load()
+
         if Path(self.MODEL_PATH).is_file():
             self.model = load_model(self.MODEL_PATH)
         else:
@@ -228,6 +272,8 @@ class QLearner:
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
+                if self.save_memory:
+                    experience.save()
                 state = new_state
                 frames_passed += 1
                 if frames_passed % 1000 == 0:
@@ -260,6 +306,10 @@ if __name__ == '__main__':
                         help='The discount to apply to future rewards (gamma)')
     parser.add_argument('--episodes', dest='episodes', type=int, default=1000000,
                         help='The number of episodes to learn')
+    parser.add_argument('--load-memory', dest='load_memory', action='store_true',
+                        help='Whether to load stored memory')
+    parser.add_argument('--save-memory', dest='save_memory', action='store_true',
+                        help='Whether to save memory')
     args = parser.parse_args()
 
     environment = EnvironmentInterface(args.host, args.port)
@@ -271,5 +321,7 @@ if __name__ == '__main__':
                        args.image_size,
                        random_action_policy,
                        args.batch_size,
-                       args.discount)
+                       args.discount,
+                       args.load_memory,
+                       args.save_memory)
     learner.start_training(args.episodes)
