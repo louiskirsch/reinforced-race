@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 from struct import pack, unpack
-from typing import List, Iterable
+from typing import List, Iterable, Any
 
 import random
 import socket
@@ -36,12 +36,27 @@ class Action:
     def random(cls):
         return cls(random.randrange(3) - 1, random.randrange(3) - 1)
 
-    @classmethod
-    def none(cls):
-        return cls(0, 0)
-
     def get_code(self) -> int:
         return (self.vertical + 1) * 3 + self.horizontal + 1
+
+
+class LeftRightAction(Action):
+
+    COUNT = 3
+
+    def __init__(self, horizontal: int):
+        super().__init__(1, horizontal)
+
+    @classmethod
+    def from_code(cls, code: int):
+        return cls(code - 1)
+
+    @classmethod
+    def random(cls):
+        return cls(random.randrange(3) - 1)
+
+    def get_code(self) -> int:
+        return self.horizontal + 1
 
 
 class State:
@@ -192,13 +207,14 @@ class QLearner:
 
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
-                 load_memory: bool, save_memory: bool):
+                 load_memory: bool, save_memory: bool, action_type: Any):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
         self.batch_size = batch_size
         self.discount = discount
         self.save_memory = save_memory
+        self.action_type = action_type
 
         self.memory = Memory(memory_capacity)
         if load_memory:
@@ -216,7 +232,7 @@ class QLearner:
         model.add(Convolution2D(32, 4, 4, activation='relu', border_mode='same', subsample=(2, 2)))
         model.add(Flatten())
         model.add(Dense(256, activation='relu'))
-        model.add(Dense(Action.COUNT, activation='softmax'))
+        model.add(Dense(self.action_type.COUNT, activation='softmax'))
         model.compile(optimizer=RMSprop(), loss='mse', metrics=['mean_squared_error'])
         return model
 
@@ -263,10 +279,10 @@ class QLearner:
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
             while not state.is_terminal:
                 if random.random() < self.random_action_policy.get_probability(frames_passed):
-                    action = Action.random()
+                    action = self.action_type.random()
                 else:
                     # noinspection PyTypeChecker
-                    action = Action.from_code(np.argmax(self._predict(state)))
+                    action = self.action_type.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
                 self._train_minibatch()
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
@@ -310,6 +326,9 @@ if __name__ == '__main__':
                         help='Whether to load stored memory')
     parser.add_argument('--save-memory', dest='save_memory', action='store_true',
                         help='Whether to save memory')
+    parser.add_argument('--always-forward', dest='action_type', action='store_const',
+                        default=Action, const=LeftRightAction,
+                        help='Whether the car should always move forward')
     args = parser.parse_args()
 
     environment = EnvironmentInterface(args.host, args.port)
@@ -323,5 +342,6 @@ if __name__ == '__main__':
                        args.batch_size,
                        args.discount,
                        args.load_memory,
-                       args.save_memory)
+                       args.save_memory,
+                       args.action_type)
     learner.start_training(args.episodes)
