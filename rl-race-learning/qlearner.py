@@ -324,16 +324,22 @@ if __name__ == '__main__':
                         help='The environment host to connect to')
     parser.add_argument('--port', dest='port', type=int, default=2851,
                         help='The environment port to connect to')
-    parser.add_argument('--memory-capacity', dest='memory_capacity', type=int, default=1000000,
+    # Atari memory capacity was 1M
+    # Simulation is highly repetitive, that's why we pick a smaller number by default
+    parser.add_argument('--memory-capacity', dest='memory_capacity', type=int, default=50000,
                         help='The size of the memory to hold past experiences')
     parser.add_argument('--image-size', dest='image_size', type=int, default=64,
                         help='The size of the (square) images to request from the environment')
     parser.add_argument('--rap-initial', dest='random_action_prob_initial', type=float, default=1.0,
                         help='The initial probability of choosing a random action instead')
-    parser.add_argument('--rap-target', dest='random_action_prob_target', type=float, default=0.1,
+    # Atari minimum random action probability was 10%
+    # That leads to early fails within the simulation stopping us to get to later stages, that's why we pick 1%
+    parser.add_argument('--rap-target', dest='random_action_prob_target', type=float, default=0.01,
                         help='The probability of choosing a random action after annealing period has passed')
+    # Atari annealing period was 1M
+    # It seems like there is not much progress being made in that manner, 10k should be enough
     parser.add_argument('--rap-annealing-period', dest='random_action_prob_annealing_period',
-                        type=int, default=1000000,
+                        type=int, default=10000,
                         help='The length of the random action annealing period in frames')
     parser.add_argument('--batch-size', dest='batch_size',
                         type=int, default=32,
