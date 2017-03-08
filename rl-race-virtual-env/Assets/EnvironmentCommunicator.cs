@@ -9,6 +9,7 @@ using System.IO;
 public class EnvironmentCommunicator : MonoBehaviour {
 
 	public int port = 2851;
+	public const int maxImageSize = 256;
 
 	private CameraSensor cameraSensor;
 	private CarController carController;
@@ -35,6 +36,8 @@ public class EnvironmentCommunicator : MonoBehaviour {
 		public int bytesLeft = 0;
 		public byte[] buffer = new byte[BufferSize];
 		public volatile bool requestPending;
+		public const int ResponseBufferSize = maxImageSize * maxImageSize + 16;
+		public byte[] responseBuffer = new byte[ResponseBufferSize];
 	}
 
 	void Start() {
@@ -82,17 +85,19 @@ public class EnvironmentCommunicator : MonoBehaviour {
 	}
 
 	private void SendSensorData(int imageWidth, int imageHeight) {
+		imageWidth = Math.Min(imageWidth, maxImageSize);
+		imageHeight = Math.Min(imageHeight, maxImageSize);
 		cameraSensor.TakePicture(image => {
-			byte[] responseBuffer = new byte[6 + imageWidth * imageHeight];
-			BinaryWriter writer = new BinaryWriter(new MemoryStream(responseBuffer));
+			int responseSize = 6 + imageWidth * imageHeight;
+			BinaryWriter writer = new BinaryWriter(new MemoryStream(client.responseBuffer));
 			writer.Write(carState.Disqualified);
 			writer.Write(carState.Finished);
 			// We can't transfer floating point values, so let's transmit velocity * 2^16
 			int velocity = IPAddress.HostToNetworkOrder((int)(carController.GetVelocity() * 0xffff));
 			writer.Write(velocity);
 			carState.ResetState();
-			writer.Write(PackCameraImage(image));
-			client.socket.BeginSend(responseBuffer, 0, responseBuffer.Length, 0, new AsyncCallback(SendCallback), client);
+			WriteCameraImage(writer, image);
+			client.socket.BeginSend(client.responseBuffer, 0, responseSize, 0, new AsyncCallback(SendCallback), client);
 		}, imageWidth, imageHeight);
 	}
 
@@ -131,15 +136,13 @@ public class EnvironmentCommunicator : MonoBehaviour {
 		client.socket.EndSend(ar);
 	}  
 
-	private byte[] PackCameraImage(Texture2D image) {
-		byte[] buffer = new byte[image.width * image.height];
+	private void WriteCameraImage(BinaryWriter writer, Texture2D image) {
 		for(int y = 0; y < image.height; y++) {
 			for(int x = 0; x < image.width; x++) {
 				Color pixel = image.GetPixel(x, y);
 				byte grayscale = (byte)(pixel.grayscale * 255);
-				buffer[y * image.width + x] = grayscale;
+				writer.Write(grayscale);
 			}
 		}
-		return buffer;
 	}
 }
