@@ -73,8 +73,7 @@ class QLearner:
         model.add(Dropout(0.5))
 
         model.add(Dense(self.action_type.COUNT, activation='linear'))
-        sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
-        model.compile(optimizer=sgd, loss='mse', metrics=['mean_squared_error'])
+        model.compile(optimizer='RMSprop', loss='mse', metrics=['mean_squared_error'])
 
         return model
 
