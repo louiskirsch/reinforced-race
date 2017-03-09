@@ -5,9 +5,9 @@ from typing import Iterable, Any
 
 import numpy as np
 from keras.engine import Model
-from keras.layers import Convolution2D, Flatten, Dense
+from keras.layers import Convolution2D, Flatten, Dense, Activation, Dropout, MaxPooling2D
 from keras.models import Sequential, load_model
-from keras.optimizers import RMSprop
+from keras.optimizers import RMSprop, SGD
 
 from environment import Action, LeftRightAction, State, EnvironmentInterface
 from memory import Experience, Memory
@@ -53,13 +53,29 @@ class QLearner:
 
     def _create_model(self) -> Model:
         model = Sequential()
-        model.add(Convolution2D(16, 8, 8, activation='relu', border_mode='same',
-                                input_shape=(self.image_size, self.image_size, 4), subsample=(4, 4)))
-        model.add(Convolution2D(32, 4, 4, activation='relu', border_mode='same', subsample=(2, 2)))
+        model.add(Convolution2D(32, 3, 3, border_mode='valid', input_shape=(self.image_size, self.image_size, 4)))
+        model.add(Activation('relu'))
+        model.add(Convolution2D(32, 3, 3))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(Dropout(0.25))
+
+        model.add(Convolution2D(64, 3, 3, border_mode='valid'))
+        model.add(Activation('relu'))
+        model.add(Convolution2D(64, 3, 3))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(Dropout(0.25))
+
         model.add(Flatten())
-        model.add(Dense(256, activation='relu'))
+        model.add(Dense(256))
+        model.add(Activation('relu'))
+        model.add(Dropout(0.5))
+
         model.add(Dense(self.action_type.COUNT, activation='linear'))
-        model.compile(optimizer=RMSprop(), loss='mse', metrics=['mean_squared_error'])
+        sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+        model.compile(optimizer=sgd, loss='mse', metrics=['mean_squared_error'])
+
         return model
 
     def _predict(self, state: State) -> np.ndarray:
