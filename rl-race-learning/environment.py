@@ -95,11 +95,10 @@ class EnvironmentInterface:
     @staticmethod
     def _calc_reward(disqualified: bool, finished: bool, velocity: float) -> float:
         if disqualified:
-            return -1e+4
+            return 0
         if finished:
             return 0
-        # If velocity = 0 then reward = -1 otherwise get closer to 0
-        return sigmoid(velocity / 2) * 2 - 2
+        return 1
 
     def read_sensors(self, width: int, height: int) -> (State, int):
         request = pack('!bii', self.REQUEST_READ_SENSORS, width, height)
