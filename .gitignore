@@ -1,5 +1,8 @@
 # Ignore model files
-*.model
+*.model*
 
 # Ignore stored experiences
 *.pickle
+
+# Ignore decisions directory
+decisions/
