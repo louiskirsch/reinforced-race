@@ -1,6 +1,7 @@
 import math
 import random
 import socket
+from collections import deque
 from struct import pack, unpack
 
 import numpy as np
@@ -54,14 +55,31 @@ class State:
     def __init__(self, data: np.ndarray, is_terminal: bool):
         # TODO normalize data?
         # Convert to 0 - 1 ranges
-        data = data.astype(np.float32) / 255
+        self.data = data.astype(np.float32) / 255
         # Add channel dimension
-        self.data = np.expand_dims(data, axis=2)
+        if len(self.data.shape) < 3:
+            self.data = np.expand_dims(self.data, axis=2)
         self.is_terminal = is_terminal
 
 
 def sigmoid(x: float) -> float:
     return 1 / (1 + math.exp(-x))
+
+
+class StateAssembler:
+
+    FRAME_COUNT = 4
+
+    def __init__(self):
+        self.cache = deque(maxlen=self.FRAME_COUNT)
+
+    def assemble_next(self, camera_image: np.ndarray, is_terminal: bool) -> State:
+        self.cache.append(camera_image)
+        # If cache is still empty, put this image in there multiple times
+        while len(self.cache) < self.FRAME_COUNT:
+            self.cache.append(camera_image)
+        images = np.stack(self.cache, axis=2)
+        return State(images, is_terminal)
 
 
 class EnvironmentInterface:
@@ -72,6 +90,7 @@ class EnvironmentInterface:
     def __init__(self, host: str, port: int):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
+        self.assembler = StateAssembler()
 
     @staticmethod
     def _calc_reward(disqualified: bool, finished: bool, velocity: float) -> float:
@@ -99,8 +118,9 @@ class EnvironmentInterface:
         camera_image = np.reshape(camera_image, (height, width), order='C')
 
         reward = self._calc_reward(disqualified, finished, velocity)
+        state = self.assembler.assemble_next(camera_image, disqualified or finished)
 
-        return State(camera_image, disqualified or finished), reward
+        return state, reward
 
     def write_action(self, action: Action):
         request = pack('!bii', self.REQUEST_WRITE_ACTION, action.vertical, action.horizontal)

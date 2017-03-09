@@ -54,7 +54,7 @@ class QLearner:
     def _create_model(self) -> Model:
         model = Sequential()
         model.add(Convolution2D(16, 8, 8, activation='relu', border_mode='same',
-                                input_shape=(self.image_size, self.image_size, 1), subsample=(4, 4)))
+                                input_shape=(self.image_size, self.image_size, 4), subsample=(4, 4)))
         model.add(Convolution2D(32, 4, 4, activation='relu', border_mode='same', subsample=(2, 2)))
         model.add(Flatten())
         model.add(Dense(256, activation='relu'))
