@@ -7,8 +7,8 @@ public class CarState : MonoBehaviour {
 	private Vector3 initialPosition;
 	private Quaternion initialRotation;
 
-	public bool Disqualified { get; set; }
-	public bool Finished { get; set; }
+	public bool Disqualified { get; private set; }
+	public bool Finished { get; private set; }
 
 	private GameObject[] checkpoints;
 	private int checkpointsPassed = 0;
