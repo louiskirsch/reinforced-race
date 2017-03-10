@@ -1,19 +1,35 @@
 import argparse
 import random
+from abc import abstractmethod
+from collections import deque
 from pathlib import Path
 from typing import Iterable, Any
+from itertools import repeat
 
 import numpy as np
+import time
 from keras.engine import Model
 from keras.layers import Convolution2D, Flatten, Dense, Activation, Dropout, MaxPooling2D
 from keras.models import Sequential, load_model
-from keras.optimizers import RMSprop, SGD
 
 from environment import Action, LeftRightAction, State, EnvironmentInterface
 from memory import Experience, Memory
 
 
 class RandomActionPolicy:
+
+    def epoch_started(self):
+        pass
+
+    def epoch_ended(self):
+        pass
+
+    @abstractmethod
+    def get_probability(self, frame: int) -> float:
+        raise NotImplementedError('Subclass RandomActionPolicy')
+
+
+class AnnealingRAPolicy(RandomActionPolicy):
 
     def __init__(self, initial: float, target: float, annealing_period: int):
         self.initial = initial
@@ -25,6 +41,30 @@ class RandomActionPolicy:
         if frame >= self.annealing_period:
             return self.target
         return self.initial - (frame / self.annealing_period) * self.difference
+
+
+class TerminalDistanceRAPolicy(RandomActionPolicy):
+
+    def __init__(self, running_average_count: int):
+        self.terminal_distances = deque(repeat(10000, running_average_count),
+                                        maxlen=running_average_count)
+        self.running_average = sum(self.terminal_distances) / running_average_count
+        self.epoch_started_time = None
+        self.last_epoch_duration = 0.0
+
+    def epoch_started(self):
+        self.epoch_started_time = time.time()
+
+    def epoch_ended(self):
+        running_average_count = len(self.terminal_distances)
+        self.running_average -= self.terminal_distances.popleft() / running_average_count
+        self.last_epoch_duration = time.time() - self.epoch_started_time
+        self.terminal_distances.append(self.last_epoch_duration)
+        self.running_average += self.last_epoch_duration / running_average_count
+
+    def get_probability(self, frame: int) -> float:
+        ratio = self.last_epoch_duration / self.running_average
+        return min(4 ** (-ratio + 0.8), 1.0)
 
 
 class QLearner:
@@ -126,6 +166,7 @@ class QLearner:
     def start_training(self, episodes: int):
         frames_passed = 0
         for episode in range(1, episodes + 1):
+            self.random_action_policy.epoch_started()
             # Set initial state
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
             while not state.is_terminal:
@@ -149,6 +190,7 @@ class QLearner:
                 # Save model after a fixed amount of frames
                 if frames_passed % 1000 == 0:
                     self.model.save(self.MODEL_PATH)
+            self.random_action_policy.epoch_ended()
 
 
 if __name__ == '__main__':
@@ -165,15 +207,18 @@ if __name__ == '__main__':
                         help='The size of the (square) images to request from the environment')
     parser.add_argument('--rap-initial', dest='random_action_prob_initial', type=float, default=1.0,
                         help='The initial probability of choosing a random action instead')
-    # Atari minimum random action probability was 10%
-    # That leads to early fails within the simulation stopping us to get to later stages, that's why we pick 1%
-    parser.add_argument('--rap-target', dest='random_action_prob_target', type=float, default=0.01,
+    parser.add_argument('--rap-target', dest='random_action_prob_target', type=float, default=0.1,
                         help='The probability of choosing a random action after annealing period has passed')
     # Atari annealing period was 1M
     # It seems like there is not much progress being made in that manner, 10k should be enough
     parser.add_argument('--rap-annealing-period', dest='random_action_prob_annealing_period',
                         type=int, default=10000,
                         help='The length of the random action annealing period in frames')
+    parser.add_argument('--rap-terminal', dest='use_rap_terminal', action='store_true',
+                        help='Use the random action policy `terminal distance`')
+    parser.add_argument('--rap-terminal-count', dest='rap_terminal_episode_count',
+                        type=int, default=50,
+                        help='Use the given moving average episode count for the policy')
     parser.add_argument('--batch-size', dest='batch_size',
                         type=int, default=32,
                         help='The minibatch size to use for training')
@@ -196,9 +241,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     environment = EnvironmentInterface(args.host, args.port)
-    random_action_policy = RandomActionPolicy(args.random_action_prob_initial,
-                                              args.random_action_prob_target,
-                                              args.random_action_prob_annealing_period)
+    if args.use_rap_terminal:
+        random_action_policy = TerminalDistanceRAPolicy(args.rap_terminal_episode_count)
+    else:
+        random_action_policy = AnnealingRAPolicy(args.random_action_prob_initial,
+                                                 args.random_action_prob_target,
+                                                 args.random_action_prob_annealing_period)
     learner = QLearner(environment,
                        args.memory_capacity,
                        args.image_size,
