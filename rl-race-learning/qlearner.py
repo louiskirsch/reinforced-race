@@ -143,7 +143,7 @@ class QLearner:
                 state = new_state
                 frames_passed += 1
                 # Print status
-                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={}, h={}), Reward {}  '
+                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {}'
                       .format(episode, frames_passed, random_probability,
                               action.vertical, action.horizontal, reward), end='\r')
                 # Save model after a fixed amount of frames
