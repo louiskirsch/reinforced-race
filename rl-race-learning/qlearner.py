@@ -126,11 +126,11 @@ class QLearner:
     def start_training(self, episodes: int):
         frames_passed = 0
         for episode in range(1, episodes + 1):
-            print('Running episode {}'.format(episode))
             # Set initial state
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
             while not state.is_terminal:
-                if random.random() < self.random_action_policy.get_probability(frames_passed):
+                random_probability = self.random_action_policy.get_probability(frames_passed)
+                if random.random() < random_probability:
                     action = self.action_type.random()
                 else:
                     # noinspection PyTypeChecker
@@ -142,8 +142,12 @@ class QLearner:
                 self.memory.append_experience(experience)
                 state = new_state
                 frames_passed += 1
+                # Print status
+                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={}, h={}), Reward {}  '
+                      .format(episode, frames_passed, random_probability,
+                              action.vertical, action.horizontal, reward), end='\r')
+                # Save model after a fixed amount of frames
                 if frames_passed % 1000 == 0:
-                    print('Completed {} frames'.format(frames_passed))
                     self.model.save(self.MODEL_PATH)
 
 
