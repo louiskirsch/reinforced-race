@@ -14,6 +14,7 @@ from keras.models import Sequential, load_model
 
 from environment import Action, LeftRightAction, State, EnvironmentInterface
 from memory import Experience, Memory
+from utils import RunningAverage
 
 
 class RandomActionPolicy:
@@ -49,9 +50,7 @@ class AnnealingRAPolicy(RandomActionPolicy):
 class TerminalDistanceRAPolicy(RandomActionPolicy):
 
     def __init__(self, running_average_count: int):
-        self.terminal_distances = deque(repeat(10000, running_average_count),
-                                        maxlen=running_average_count)
-        self.running_average = sum(self.terminal_distances) / running_average_count
+        self.running_average = RunningAverage(running_average_count, start_value=10000)
         self.epoch_started_time = None
         self.last_epoch_duration = 0.0
 
@@ -59,14 +58,11 @@ class TerminalDistanceRAPolicy(RandomActionPolicy):
         self.epoch_started_time = time.time()
 
     def epoch_ended(self):
-        running_average_count = len(self.terminal_distances)
-        self.running_average -= self.terminal_distances.popleft() / running_average_count
         self.last_epoch_duration = time.time() - self.epoch_started_time
-        self.terminal_distances.append(self.last_epoch_duration)
-        self.running_average += self.last_epoch_duration / running_average_count
+        self.running_average.add(self.last_epoch_duration)
 
     def get_probability(self, frame: int) -> float:
-        ratio = self.last_epoch_duration / self.running_average
+        ratio = self.last_epoch_duration / self.running_average.get()
         return min(4 ** (-ratio + 0.8), 1.0)
 
 
