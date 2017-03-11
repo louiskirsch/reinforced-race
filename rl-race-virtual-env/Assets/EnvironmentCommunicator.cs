@@ -40,14 +40,22 @@ public class EnvironmentCommunicator : MonoBehaviour {
 		public byte[] responseBuffer = new byte[ResponseBufferSize];
 	}
 
+	private int DeterminePort() {
+		string[] args = System.Environment.GetCommandLineArgs();
+		for(int i = 0; i < args.Length; i++) {
+			if(args[i] == "--port" && i + 1 < args.Length)
+				return Convert.ToInt32(args[i + 1]);
+		}
+		// or return default port
+		return port;
+	}
+
 	void Start() {
 		cameraSensor = GetComponentInChildren<CameraSensor>();
 		carState = GetComponent<CarState>();
 		carController = GetComponent<CarController>();
 
-		IPHostEntry ipHostInfo = Dns.GetHostEntry("");
-		IPAddress ipAddress = ipHostInfo.AddressList[0];
-		IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
+		IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, DeterminePort());
 
 		listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
