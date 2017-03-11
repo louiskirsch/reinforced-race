@@ -73,20 +73,20 @@ class QLearner:
 
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
-                 load_memory: bool, save_memory: bool, action_type: Any, min_memory_training: int):
+                 should_load: bool, should_save: bool, action_type: Any):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
         self.batch_size = batch_size
         self.discount = discount
         self.action_type = action_type
-        self.min_memory_training = min_memory_training
+        self.should_save = should_save
 
-        self.memory = Memory(memory_capacity, save_memory)
-        if load_memory:
+        self.memory = Memory(memory_capacity, should_save)
+        if should_load:
             self.memory.load()
 
-        if Path(self.MODEL_PATH).is_file():
+        if should_load and Path(self.MODEL_PATH).is_file():
             self.model = load_model(self.MODEL_PATH)
         else:
             self.model = self._create_model()
@@ -147,7 +147,7 @@ class QLearner:
         return x, y
 
     def _train_minibatch(self):
-        if len(self.memory) < self.min_memory_training:
+        if len(self.memory) < 1:
             return
         x, y = self._generate_minibatch()
         self.model.train_on_batch(x, y)
@@ -188,7 +188,7 @@ class QLearner:
                       .format(episode, frames_passed, random_probability,
                               action.vertical, action.horizontal, reward), end='\r')
                 # Save model after a fixed amount of frames
-                if frames_passed % 1000 == 0:
+                if self.should_save and frames_passed % 1000 == 0:
                     self.model.save(self.MODEL_PATH)
             self.random_action_policy.epoch_ended()
 
@@ -214,8 +214,8 @@ if __name__ == '__main__':
     parser.add_argument('--rap-annealing-period', dest='random_action_prob_annealing_period',
                         type=int, default=10000,
                         help='The length of the random action annealing period in frames')
-    parser.add_argument('--rap-terminal', dest='use_rap_terminal', action='store_true',
-                        help='Use the random action policy `terminal distance`')
+    parser.add_argument('--rap-annealing', dest='use_rap_annealing', action='store_true',
+                        help='Use an annealing random action policy instead of `terminal distance`')
     parser.add_argument('--rap-terminal-count', dest='rap_terminal_episode_count',
                         type=int, default=50,
                         help='Use the given moving average episode count for the policy')
@@ -227,21 +227,19 @@ if __name__ == '__main__':
                         help='The discount to apply to future rewards (gamma)')
     parser.add_argument('--episodes', dest='episodes', type=int, default=1000000,
                         help='The number of episodes to learn')
-    parser.add_argument('--load-memory', dest='load_memory', action='store_true',
-                        help='Whether to load stored memory')
-    parser.add_argument('--save-memory', dest='save_memory', action='store_true',
-                        help='Whether to save memory')
-    parser.add_argument('--min-memory', dest='min_memory_training', type=int, default=1,
-                        help='The minimum memory size before training starts')
-    parser.add_argument('--always-forward', dest='action_type', action='store_const',
-                        default=Action, const=LeftRightAction,
-                        help='Whether the car should always move forward')
+    parser.add_argument('--load', dest='should_load', action='store_true',
+                        help='Whether to load the model and memory')
+    parser.add_argument('--save', dest='should_save', action='store_true',
+                        help='Whether to save the model and memory')
+    parser.add_argument('--all-actions', dest='action_type', action='store_const',
+                        default=LeftRightAction, const=Action,
+                        help='Allows the car also to decide whether to go forward or backward')
     parser.add_argument('--no-training', dest='training_enabled', action='store_false',
                         help='Only drive model car, do not learn')
     args = parser.parse_args()
 
     environment = EnvironmentInterface(args.host, args.port)
-    if args.use_rap_terminal:
+    if not args.use_rap_annealing:
         random_action_policy = TerminalDistanceRAPolicy(args.rap_terminal_episode_count)
     else:
         random_action_policy = AnnealingRAPolicy(args.random_action_prob_initial,
@@ -253,10 +251,9 @@ if __name__ == '__main__':
                        random_action_policy,
                        args.batch_size,
                        args.discount,
-                       args.load_memory,
-                       args.save_memory,
-                       args.action_type,
-                       args.min_memory_training)
+                       args.should_load,
+                       args.should_save,
+                       args.action_type)
 
     if args.training_enabled:
         print("Start training")
