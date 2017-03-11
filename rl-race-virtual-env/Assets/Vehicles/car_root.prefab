@@ -833,8 +833,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac1ec1a02704345dd977f98e270cc67c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  transformHistoryLength: 7
-  transformHistorySaveInterval: 1
+  transformHistoryLength: 15
+  transformHistorySaveDistance: 1
+  resetMinimumDistance: 5
 --- !u!114 &114492810067539268
 MonoBehaviour:
   m_ObjectHideFlags: 1
