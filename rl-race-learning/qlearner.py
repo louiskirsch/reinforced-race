@@ -1,10 +1,9 @@
 import argparse
 import random
 from abc import abstractmethod
-from collections import deque
 from pathlib import Path
 from typing import Iterable, Any
-from itertools import repeat
+import yaml
 
 import numpy as np
 import time
@@ -55,10 +54,10 @@ class TerminalDistanceRAPolicy(RandomActionPolicy):
         self.last_epoch_duration = 0.0
 
     def epoch_started(self):
-        self.epoch_started_time = time.time()
+        self.epoch_started_time = time.perf_counter()
 
     def epoch_ended(self):
-        self.last_epoch_duration = time.time() - self.epoch_started_time
+        self.last_epoch_duration = time.perf_counter() - self.epoch_started_time
         self.running_average.add(self.last_epoch_duration)
 
     def get_probability(self, frame: int) -> float:
@@ -89,6 +88,33 @@ class ReuseRAPolicyDecorator(RandomActionPolicy):
         return self.last_action
 
 
+class TrainingInfo:
+
+    INFO_FILE = 'training-info.yaml'
+
+    def __init__(self, should_load: bool):
+        file_path = Path(self.INFO_FILE)
+        if should_load and file_path.is_file():
+            with file_path.open() as file:
+                self.data = yaml.safe_load(file)
+        else:
+            self.data = {
+                'episode': 1,
+                'frames': 0,
+                'mean_training_time': 1.0
+            }
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def save(self):
+        with open(self.INFO_FILE, 'w') as file:
+            yaml.safe_dump(self.data, file, default_flow_style=False)
+
+
 class QLearner:
 
     MODEL_PATH = 'actionValue.model'
@@ -103,6 +129,8 @@ class QLearner:
         self.discount = discount
         self.action_type = action_type
         self.should_save = should_save
+        self.training_info = TrainingInfo(should_load_model)
+        self.mean_training_time = RunningAverage(1000, self.training_info['mean_training_time'])
 
         self.memory = Memory(memory_capacity, should_save)
         if should_load_memory:
@@ -171,8 +199,11 @@ class QLearner:
     def _train_minibatch(self):
         if len(self.memory) < 1:
             return
+        start = time.perf_counter()
         x, y = self._generate_minibatch()
         self.model.train_on_batch(x, y)
+        end = time.perf_counter()
+        self.mean_training_time.add(end - start)
 
     def predict(self):
         while True:
@@ -180,14 +211,17 @@ class QLearner:
             while not state.is_terminal:
                 action = self.action_type.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
+                # Wait as long as we usually need to wait due to training
+                time.sleep(self.training_info['mean_training_time'])
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
                 state = new_state
 
     def start_training(self, episodes: int):
-        frames_passed = 0
-        for episode in range(1, episodes + 1):
+        start_episode = self.training_info['episode']
+        frames_passed = self.training_info['frames']
+        for episode in range(start_episode, episodes + 1):
             self.random_action_policy.epoch_started()
             # Set initial state
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
@@ -205,13 +239,20 @@ class QLearner:
                 self.memory.append_experience(experience)
                 state = new_state
                 frames_passed += 1
+
                 # Print status
                 print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {}'
                       .format(episode, frames_passed, random_probability,
                               action.vertical, action.horizontal, reward), end='\r')
+
                 # Save model after a fixed amount of frames
                 if self.should_save and frames_passed % 1000 == 0:
+                    self.training_info['episode'] = episode
+                    self.training_info['frames'] = frames_passed
+                    self.training_info['mean_training_time'] = self.mean_training_time.get()
+                    self.training_info.save()
                     self.model.save(self.MODEL_PATH)
+
             self.random_action_policy.epoch_ended()
 
 
