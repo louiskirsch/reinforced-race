@@ -99,7 +99,7 @@ class QLearner:
 
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
-                 should_load: bool, should_save: bool, action_type: Any):
+                 should_load_model: bool, should_load_memory: bool, should_save: bool, action_type: Any):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
@@ -109,10 +109,10 @@ class QLearner:
         self.should_save = should_save
 
         self.memory = Memory(memory_capacity, should_save)
-        if should_load:
+        if should_load_memory:
             self.memory.load()
 
-        if should_load and Path(self.MODEL_PATH).is_file():
+        if should_load_model and Path(self.MODEL_PATH).is_file():
             self.model = load_model(self.MODEL_PATH)
         else:
             self.model = self._create_model()
@@ -286,6 +286,7 @@ if __name__ == '__main__':
                        args.batch_size,
                        args.discount,
                        args.should_load,
+                       args.should_load and args.training_enabled,
                        args.should_save,
                        args.action_type)
 
