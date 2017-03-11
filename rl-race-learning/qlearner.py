@@ -280,9 +280,9 @@ if __name__ == '__main__':
     parser.add_argument('--rap-annealing', dest='use_rap_annealing', action='store_true',
                         help='Use an annealing random action policy instead of `terminal distance`')
     parser.add_argument('--rap-terminal-count', dest='rap_terminal_episode_count',
-                        type=int, default=50,
+                        type=int, default=20,
                         help='Use the given moving average episode count for the policy')
-    parser.add_argument('--rap-reuse', dest='rap_reuse_prob', type=float, default=None,
+    parser.add_argument('--rap-reuse', dest='rap_reuse_prob', type=float, default=0.8,
                         help='Enable reusing random actions with the given probability')
     parser.add_argument('--batch-size', dest='batch_size',
                         type=int, default=32,
@@ -312,7 +312,7 @@ if __name__ == '__main__':
                                                  args.random_action_prob_target,
                                                  args.random_action_prob_annealing_period)
 
-    if args.rap_reuse_prob is not None:
+    if args.rap_reuse_prob:
         random_action_policy = ReuseRAPolicyDecorator(random_action_policy,
                                                       args.rap_reuse_prob)
 
