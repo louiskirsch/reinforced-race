@@ -28,6 +28,9 @@ class RandomActionPolicy:
     def get_probability(self, frame: int) -> float:
         raise NotImplementedError('Subclass RandomActionPolicy')
 
+    def sample_action(self, action_type: Any):
+        return action_type.random()
+
 
 class AnnealingRAPolicy(RandomActionPolicy):
 
@@ -65,6 +68,29 @@ class TerminalDistanceRAPolicy(RandomActionPolicy):
     def get_probability(self, frame: int) -> float:
         ratio = self.last_epoch_duration / self.running_average
         return min(4 ** (-ratio + 0.8), 1.0)
+
+
+class ReuseRAPolicyDecorator(RandomActionPolicy):
+
+    def __init__(self, wrapped_policy: RandomActionPolicy, reuse_prob: float):
+        self.wrapped_policy = wrapped_policy
+        self.reuse_prob = reuse_prob
+        self.last_action = None
+
+    def epoch_started(self):
+        self.wrapped_policy.epoch_started()
+
+    def get_probability(self, frame: int) -> float:
+        return self.wrapped_policy.get_probability(frame)
+
+    def epoch_ended(self):
+        self.wrapped_policy.epoch_ended()
+
+    def sample_action(self, action_type: Any):
+        if self.last_action is not None and random.random() < self.reuse_prob:
+            return self.last_action
+        self.last_action = self.wrapped_policy.sample_action(action_type)
+        return self.last_action
 
 
 class QLearner:
@@ -172,7 +198,7 @@ class QLearner:
             while not state.is_terminal:
                 random_probability = self.random_action_policy.get_probability(frames_passed)
                 if random.random() < random_probability:
-                    action = self.action_type.random()
+                    action = self.random_action_policy.sample_action(self.action_type)
                 else:
                     # noinspection PyTypeChecker
                     action = self.action_type.from_code(np.argmax(self._predict(state)))
@@ -219,6 +245,8 @@ if __name__ == '__main__':
     parser.add_argument('--rap-terminal-count', dest='rap_terminal_episode_count',
                         type=int, default=50,
                         help='Use the given moving average episode count for the policy')
+    parser.add_argument('--rap-reuse', dest='rap_reuse_prob', type=float, default=None,
+                        help='Enable reusing random actions with the given probability')
     parser.add_argument('--batch-size', dest='batch_size',
                         type=int, default=32,
                         help='The minibatch size to use for training')
@@ -239,12 +267,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     environment = EnvironmentInterface(args.host, args.port)
+
     if not args.use_rap_annealing:
         random_action_policy = TerminalDistanceRAPolicy(args.rap_terminal_episode_count)
     else:
         random_action_policy = AnnealingRAPolicy(args.random_action_prob_initial,
                                                  args.random_action_prob_target,
                                                  args.random_action_prob_annealing_period)
+
+    if args.rap_reuse_prob is not None:
+        random_action_policy = ReuseRAPolicyDecorator(random_action_policy,
+                                                      args.rap_reuse_prob)
+
     learner = QLearner(environment,
                        args.memory_capacity,
                        args.image_size,
