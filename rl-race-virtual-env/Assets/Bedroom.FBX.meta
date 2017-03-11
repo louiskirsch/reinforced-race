@@ -1,0 +1,315 @@
+fileFormatVersion: 2
+guid: 213651bea53e3498b882b5fb0c9328dc
+timeCreated: 1489239997
+licenseType: Free
+ModelImporter:
+  serializedVersion: 19
+  fileIDToRecycleName:
+    100000: Bed
+    100002: Bed Table
+    100004: //RootNode
+    100006: Box01
+    100008: Box02
+    100010: Box03
+    100012: Box04
+    100014: Box05
+    100016: Box06
+    100018: Box07
+    100020: Box08
+    100022: Box09
+    100024: Box10
+    100026: Box11
+    100028: Box12
+    100030: Box13
+    100032: Box14
+    100034: Box15
+    100036: Box16
+    100038: Box17
+    100040: Box22
+    100042: Box24
+    100044: Camera01
+    100046: Camera01.Target
+    100048: Camera02
+    100050: Camera02.Target
+    100052: Camera03
+    100054: Camera03.Target
+    100056: Camera04
+    100058: Camera04.Target
+    100060: Chair
+    100062: Compass01
+    100064: Computer
+    100066: Cylinder01
+    100068: Cylinder02
+    100070: Cylinder03
+    100072: Cylinder11
+    100074: Cylinder12
+    100076: Cylinder13
+    100078: Cylinder14
+    100080: Cylinder15
+    100082: Cylinder16
+    100084: Cylinder17
+    100086: Daylight01
+    100088: Desk
+    100090: Door
+    100092: Draws
+    100094: Floor
+    100096: Light
+    100098: mr Sky Portal01
+    100100: Object01
+    100102: Object03
+    100104: PhotometricLight01
+    100106: Plane01
+    100108: Plane02
+    100110: Screen
+    100112: Sky02
+    100114: Sphere01
+    100116: Sun01
+    100118: Walls
+    100120: Wardrobe
+    100122: Window Frame
+    400000: Bed
+    400002: Bed Table
+    400004: //RootNode
+    400006: Box01
+    400008: Box02
+    400010: Box03
+    400012: Box04
+    400014: Box05
+    400016: Box06
+    400018: Box07
+    400020: Box08
+    400022: Box09
+    400024: Box10
+    400026: Box11
+    400028: Box12
+    400030: Box13
+    400032: Box14
+    400034: Box15
+    400036: Box16
+    400038: Box17
+    400040: Box22
+    400042: Box24
+    400044: Camera01
+    400046: Camera01.Target
+    400048: Camera02
+    400050: Camera02.Target
+    400052: Camera03
+    400054: Camera03.Target
+    400056: Camera04
+    400058: Camera04.Target
+    400060: Chair
+    400062: Compass01
+    400064: Computer
+    400066: Cylinder01
+    400068: Cylinder02
+    400070: Cylinder03
+    400072: Cylinder11
+    400074: Cylinder12
+    400076: Cylinder13
+    400078: Cylinder14
+    400080: Cylinder15
+    400082: Cylinder16
+    400084: Cylinder17
+    400086: Daylight01
+    400088: Desk
+    400090: Door
+    400092: Draws
+    400094: Floor
+    400096: Light
+    400098: mr Sky Portal01
+    400100: Object01
+    400102: Object03
+    400104: PhotometricLight01
+    400106: Plane01
+    400108: Plane02
+    400110: Screen
+    400112: Sky02
+    400114: Sphere01
+    400116: Sun01
+    400118: Walls
+    400120: Wardrobe
+    400122: Window Frame
+    2300000: Box01
+    2300002: Box02
+    2300004: Box03
+    2300006: Box04
+    2300008: Box05
+    2300010: Box06
+    2300012: Box07
+    2300014: Box08
+    2300016: Box09
+    2300018: Box10
+    2300020: Box11
+    2300022: Box12
+    2300024: Box13
+    2300026: Box14
+    2300028: Box15
+    2300030: Box16
+    2300032: Box17
+    2300034: Box22
+    2300036: Box24
+    2300038: Cylinder01
+    2300040: Cylinder02
+    2300042: Cylinder03
+    2300044: Cylinder11
+    2300046: Cylinder12
+    2300048: Cylinder13
+    2300050: Cylinder14
+    2300052: Cylinder15
+    2300054: Cylinder16
+    2300056: Cylinder17
+    2300058: Floor
+    2300060: Object01
+    2300062: Object03
+    2300064: Plane01
+    2300066: Plane02
+    2300068: Screen
+    2300070: Sphere01
+    2300072: Walls
+    2300074: Window Frame
+    3300000: Box01
+    3300002: Box02
+    3300004: Box03
+    3300006: Box04
+    3300008: Box05
+    3300010: Box06
+    3300012: Box07
+    3300014: Box08
+    3300016: Box09
+    3300018: Box10
+    3300020: Box11
+    3300022: Box12
+    3300024: Box13
+    3300026: Box14
+    3300028: Box15
+    3300030: Box16
+    3300032: Box17
+    3300034: Box22
+    3300036: Box24
+    3300038: Cylinder01
+    3300040: Cylinder02
+    3300042: Cylinder03
+    3300044: Cylinder11
+    3300046: Cylinder12
+    3300048: Cylinder13
+    3300050: Cylinder14
+    3300052: Cylinder15
+    3300054: Cylinder16
+    3300056: Cylinder17
+    3300058: Floor
+    3300060: Object01
+    3300062: Object03
+    3300064: Plane01
+    3300066: Plane02
+    3300068: Screen
+    3300070: Sphere01
+    3300072: Walls
+    3300074: Window Frame
+    4300000: Box01
+    4300002: Object01
+    4300004: Object03
+    4300006: Box03
+    4300008: Plane01
+    4300010: Box06
+    4300012: Box02
+    4300014: Box09
+    4300016: Box04
+    4300018: Box08
+    4300020: Box13
+    4300022: Box14
+    4300024: Cylinder11
+    4300026: Box07
+    4300028: Box16
+    4300030: Box05
+    4300032: Cylinder14
+    4300034: Cylinder15
+    4300036: Cylinder16
+    4300038: Cylinder12
+    4300040: Cylinder13
+    4300042: Cylinder02
+    4300044: Cylinder01
+    4300046: Box10
+    4300048: Box17
+    4300050: Box11
+    4300052: Plane02
+    4300054: Box12
+    4300056: Box15
+    4300058: Screen
+    4300060: Sphere01
+    4300062: Box24
+    4300064: Box22
+    4300066: Walls
+    4300068: Window Frame
+    4300070: Floor
+    4300072: Cylinder17
+    4300074: Cylinder03
+    7400000: Take 001
+    9500000: //RootNode
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 15
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    rootMotionBoneRotation: {x: 0, y: 0, z: 0, w: 1}
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 2
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

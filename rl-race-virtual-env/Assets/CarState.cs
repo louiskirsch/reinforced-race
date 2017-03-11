@@ -4,19 +4,44 @@ using UnityEngine;
 
 public class CarState : MonoBehaviour {
 
-	private Vector3 initialPosition;
-	private Quaternion initialRotation;
+	private class TransformState {
+		public Vector3 position;
+		public Quaternion rotation;
+		
+		public TransformState(Vector3 position, Quaternion rotation) {
+			this.position = position;
+			this.rotation = rotation;
+		}
+	}
 
 	public bool Disqualified { get; private set; }
 	public bool Finished { get; private set; }
 
+	public uint maxTransformHistoryLength = 15;
+	public float transformHistorySaveDistance = 1f;
+	public float resetMinimumDistance = 5f;
+
 	private GameObject[] checkpoints;
 	private int checkpointsPassed = 0;
 
+	private LinkedList<TransformState> transformHistory;
+
+	private Vector3 lastPosition;
+	private float distanceDriven = 0f;
+	private float lastHistoryTransformDistance = 0f;
+
 	void Start () {
-		initialPosition = transform.position;
-		initialRotation = transform.rotation;
 		checkpoints = GameObject.FindGameObjectsWithTag("Checkpoint");
+
+		TransformState startState = new TransformState(transform.position, transform.rotation);
+		InitializeTransformHistory(startState);
+
+		lastPosition = transform.position;
+	}
+
+	private void InitializeTransformHistory(TransformState state) {
+		transformHistory = new LinkedList<TransformState>();
+		transformHistory.AddLast(state);
 	}
 
 	public void ResetState() {
@@ -24,12 +49,45 @@ public class CarState : MonoBehaviour {
 		Finished = false;
 	}
 
+	private void SaveTransform() {
+		if(Disqualified)
+			return;
+		TransformState state = new TransformState(transform.position, transform.rotation);
+		transformHistory.AddLast(state);
+		if(transformHistory.Count > maxTransformHistoryLength)
+			transformHistory.RemoveFirst();
+		lastHistoryTransformDistance = distanceDriven;
+	}
+
+	void Update() {
+		distanceDriven += (transform.position - lastPosition).magnitude;
+		lastPosition = transform.position;
+		if(distanceDriven - lastHistoryTransformDistance > transformHistorySaveDistance)
+			SaveTransform();
+	}
+
+	private TransformState SampleHistoryState() {
+		int prohibitedHistory = (int)(resetMinimumDistance / transformHistorySaveDistance);
+		int historySample = Random.Range(0, System.Math.Max(1, transformHistory.Count - prohibitedHistory));
+
+		// Delete all following history states
+		while(transformHistory.Count - 1 != historySample)
+			transformHistory.RemoveLast();
+		
+		return transformHistory.Last.Value;
+	}
+
 	private void ResetVehicle() {
-		transform.position = initialPosition;
-		transform.rotation = initialRotation;
+		CarController carController = GetComponent<CarController>();
 		Rigidbody body = GetComponent<Rigidbody>();
+		TransformState historicalState = SampleHistoryState();
+
+		carController.ApplyAction(0f, 0f);
+		transform.position = historicalState.position;
+		transform.rotation = historicalState.rotation;
 		body.velocity = Vector3.zero;
 		body.angularVelocity = Vector3.zero;
+		carController.ApplyAction(1f, 0f);
 	}
 
 	private void ResetCheckpoints() {

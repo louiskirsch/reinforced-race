@@ -53,9 +53,10 @@ class LeftRightAction(Action):
 class State:
 
     def __init__(self, data: np.ndarray, is_terminal: bool):
-        # TODO normalize data?
         # Convert to 0 - 1 ranges
         self.data = data.astype(np.float32) / 255
+        # Z-normalize
+        self.data = (self.data - np.mean(self.data)) / np.std(self.data, ddof=1)
         # Add channel dimension
         if len(self.data.shape) < 3:
             self.data = np.expand_dims(self.data, axis=2)
