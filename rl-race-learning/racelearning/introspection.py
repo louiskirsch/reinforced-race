@@ -1,12 +1,12 @@
+import math
 from typing import Iterable, Tuple
 
 import keras
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid import ImageGrid
 
-from memory import Experience
+from racelearning.memory import Experience
 
 
 def softmax(x):

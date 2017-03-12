@@ -1,19 +1,19 @@
 import argparse
 import random
+import time
 from abc import abstractmethod
 from pathlib import Path
 from typing import Iterable, Any
-import yaml
 
 import numpy as np
-import time
+import yaml
 from keras.engine import Model
 from keras.layers import Convolution2D, Flatten, Dense, Activation, Dropout, MaxPooling2D
 from keras.models import Sequential, load_model
+from racelearning.memory import Experience, Memory
+from racelearning.utils import RunningAverage
 
-from environment import Action, LeftRightAction, State, EnvironmentInterface
-from memory import Experience, Memory
-from utils import RunningAverage
+from racelearning.environment import Action, LeftRightAction, State, EnvironmentInterface
 
 
 class RandomActionPolicy:
