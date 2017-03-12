@@ -100,7 +100,8 @@ class TrainingInfo:
             self.data = {
                 'episode': 1,
                 'frames': 0,
-                'mean_training_time': 1.0
+                'mean_training_time': 1.0,
+                'batches_per_frame': 1
             }
 
     def __getitem__(self, item):
@@ -121,7 +122,7 @@ class QLearner:
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
                  should_load_model: bool, should_load_memory: bool, should_save: bool, action_type: Any,
-                 create_model: Callable[[Any, int], Model]):
+                 create_model: Callable[[Any, int], Model], batches_per_frame: int):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
@@ -131,6 +132,8 @@ class QLearner:
         self.should_save = should_save
         self.training_info = TrainingInfo(should_load_model)
         self.mean_training_time = RunningAverage(1000, self.training_info['mean_training_time'])
+        if batches_per_frame:
+            self.training_info['batches_per_frame'] = batches_per_frame
 
         self.memory = Memory(memory_capacity, should_save)
         if should_load_memory:
@@ -187,7 +190,8 @@ class QLearner:
                 action = self.action_type.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
                 # Wait as long as we usually need to wait due to training
-                time.sleep(self.training_info['mean_training_time'])
+                time.sleep(self.training_info['batches_per_frame'] *
+                           self.training_info['mean_training_time'])
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
@@ -208,7 +212,8 @@ class QLearner:
                     # noinspection PyTypeChecker
                     action = self.action_type.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
-                self._train_minibatch()
+                for _ in range(self.training_info['batches_per_frame']):
+                    self._train_minibatch()
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)

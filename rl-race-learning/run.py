@@ -37,6 +37,9 @@ parser.add_argument('--rap-reuse', dest='rap_reuse_prob', type=float, default=0.
 parser.add_argument('--batch-size', dest='batch_size',
                     type=int, default=32,
                     help='The minibatch size to use for training')
+parser.add_argument('--batches-per-frame', dest='batches_per_frame',
+                    type=int, default=None,
+                    help='The number of minibatch training iterations per frame')
 parser.add_argument('--discount', dest='discount',
                     type=float, default=0.975,
                     help='The discount to apply to future rewards (gamma)')
@@ -87,7 +90,8 @@ learner = QLearner(environment,
                    args.should_load and args.training_enabled,
                    args.should_save,
                    args.action_type,
-                   model_creator)
+                   model_creator,
+                   args.batches_per_frame)
 
 if args.training_enabled:
     print("Start training")
