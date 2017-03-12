@@ -51,6 +51,12 @@ parser.add_argument('--all-actions', dest='action_type', action='store_const',
                     help='Allows the car also to decide whether to go forward or backward')
 parser.add_argument('--no-training', dest='training_enabled', action='store_false',
                     help='Only drive model car, do not learn')
+parser.add_argument('--atari', dest='model_creator', action='store_const',
+                    const=models.create_atari_model,
+                    help='Use the original atari model for predicting returns')
+parser.add_argument('--vgg', dest='model_creator', action='store_const',
+                    const=models.create_vgg_like_model,
+                    help='Use a VGG like model for predicting returns')
 args = parser.parse_args()
 
 environment = EnvironmentInterface(args.host, args.port)
@@ -66,6 +72,11 @@ if args.rap_reuse_prob:
     random_action_policy = ReuseRAPolicyDecorator(random_action_policy,
                                                   args.rap_reuse_prob)
 
+if args.model_creator is None:
+    model_creator = models.create_vgg_like_model
+else:
+    model_creator = args.model_creator
+
 learner = QLearner(environment,
                    args.memory_capacity,
                    args.image_size,
@@ -76,7 +87,7 @@ learner = QLearner(environment,
                    args.should_load and args.training_enabled,
                    args.should_save,
                    args.action_type,
-                   models.create_vgg_like_model)
+                   model_creator)
 
 if args.training_enabled:
     print("Start training")

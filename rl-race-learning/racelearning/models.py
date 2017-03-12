@@ -29,3 +29,16 @@ def create_vgg_like_model(input_shape: Tuple[int, int, int], output_units: int) 
     model.compile(optimizer='RMSprop', loss='mse', metrics=['mean_squared_error'])
 
     return model
+
+
+def create_atari_model(input_shape: Tuple[int, int, int], output_units: int) -> Model:
+    model = Sequential()
+    model.add(Convolution2D(16, 8, 8, activation='relu', border_mode='same',
+                            input_shape=input_shape, subsample=(4, 4)))
+    model.add(Convolution2D(32, 4, 4, activation='relu', border_mode='same', subsample=(2, 2)))
+    model.add(Flatten())
+    model.add(Dense(256, activation='relu'))
+    model.add(Dense(output_units, activation='linear'))
+    model.compile(optimizer='RMSprop', loss='mse', metrics=['mean_squared_error'])
+
+    return model
