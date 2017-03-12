@@ -2,6 +2,7 @@
 
 import argparse
 
+from racelearning import models
 from racelearning.environment import LeftRightAction, Action, EnvironmentInterface
 from racelearning.qlearner import AnnealingRAPolicy, QLearner
 from racelearning.qlearner import TerminalDistanceRAPolicy, ReuseRAPolicyDecorator
@@ -74,7 +75,8 @@ learner = QLearner(environment,
                    args.should_load,
                    args.should_load and args.training_enabled,
                    args.should_save,
-                   args.action_type)
+                   args.action_type,
+                   models.create_vgg_like_model)
 
 if args.training_enabled:
     print("Start training")

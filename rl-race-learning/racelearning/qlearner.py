@@ -2,7 +2,7 @@ import random
 import time
 from abc import abstractmethod
 from pathlib import Path
-from typing import Iterable, Any
+from typing import Iterable, Any, Callable
 
 import numpy as np
 import yaml
@@ -12,7 +12,7 @@ from keras.models import Sequential, load_model
 from racelearning.memory import Experience, Memory
 from racelearning.utils import RunningAverage
 
-from racelearning.environment import State, EnvironmentInterface
+from racelearning.environment import State, EnvironmentInterface, StateAssembler
 
 
 class RandomActionPolicy:
@@ -120,7 +120,8 @@ class QLearner:
 
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
-                 should_load_model: bool, should_load_memory: bool, should_save: bool, action_type: Any):
+                 should_load_model: bool, should_load_memory: bool, should_save: bool, action_type: Any,
+                 create_model: Callable[[Any, int], Model]):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
@@ -138,33 +139,8 @@ class QLearner:
         if should_load_model and Path(self.MODEL_PATH).is_file():
             self.model = load_model(self.MODEL_PATH)
         else:
-            self.model = self._create_model()
-
-    def _create_model(self) -> Model:
-        model = Sequential()
-        model.add(Convolution2D(32, 3, 3, border_mode='valid', input_shape=(self.image_size, self.image_size, 4)))
-        model.add(Activation('relu'))
-        model.add(Convolution2D(32, 3, 3))
-        model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
-
-        model.add(Convolution2D(64, 3, 3, border_mode='valid'))
-        model.add(Activation('relu'))
-        model.add(Convolution2D(64, 3, 3))
-        model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
-
-        model.add(Flatten())
-        model.add(Dense(256))
-        model.add(Activation('relu'))
-        model.add(Dropout(0.5))
-
-        model.add(Dense(self.action_type.COUNT, activation='linear'))
-        model.compile(optimizer='RMSprop', loss='mse', metrics=['mean_squared_error'])
-
-        return model
+            self.model = create_model((self.image_size, self.image_size, StateAssembler.FRAME_COUNT),
+                                      action_type.COUNT)
 
     def _predict(self, state: State) -> np.ndarray:
         # Add batch dimension
