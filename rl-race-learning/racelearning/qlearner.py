@@ -221,7 +221,7 @@ class QLearner:
                 frames_passed += 1
 
                 # Print status
-                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {}'
+                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {:.4f}'
                       .format(episode, frames_passed, random_probability,
                               action.vertical, action.horizontal, reward), end='\r')
 

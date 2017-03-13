@@ -97,9 +97,7 @@ class EnvironmentInterface:
     def _calc_reward(disqualified: bool, finished: bool, velocity: float) -> float:
         if disqualified:
             return 0
-        if finished:
-            return 0
-        return 1
+        return velocity
 
     def read_sensors(self, width: int, height: int) -> (State, int):
         request = pack('!bii', self.REQUEST_READ_SENSORS, width, height)
