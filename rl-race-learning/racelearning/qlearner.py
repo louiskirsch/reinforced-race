@@ -1,10 +1,12 @@
 import random
+import signal
 import time
 from abc import abstractmethod
 from pathlib import Path
 from typing import Iterable, Any, Callable
 
 import numpy as np
+import sys
 import yaml
 from keras.engine import Model
 from keras.layers import Convolution2D, Flatten, Dense, Activation, Dropout, MaxPooling2D
@@ -130,6 +132,8 @@ class QLearner:
         self.discount = discount
         self.action_type = action_type
         self.should_save = should_save
+        self.should_exit = False
+        self.default_sigint_handler = signal.getsignal(signal.SIGINT)
         self.training_info = TrainingInfo(should_load_model)
         self.mean_training_time = RunningAverage(1000, self.training_info['mean_training_time'])
         if batches_per_frame:
@@ -144,6 +148,10 @@ class QLearner:
         else:
             self.model = create_model((self.image_size, self.image_size, StateAssembler.FRAME_COUNT),
                                       action_type.COUNT)
+
+    def stop(self, sig, frame):
+        print('Exiting...')
+        self.should_exit = True
 
     def _predict(self, state: State) -> np.ndarray:
         # Add batch dimension
@@ -184,6 +192,7 @@ class QLearner:
         self.mean_training_time.add(end - start)
 
     def predict(self):
+        signal.signal(signal.SIGINT, self.stop)
         while True:
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
             while not state.is_terminal:
@@ -197,7 +206,11 @@ class QLearner:
                 self.memory.append_experience(experience)
                 state = new_state
 
+                if self.should_exit:
+                    sys.exit(0)
+
     def start_training(self, episodes: int):
+        signal.signal(signal.SIGINT, self.stop)
         start_episode = self.training_info['episode']
         frames_passed = self.training_info['frames']
         for episode in range(start_episode, episodes + 1):
@@ -233,5 +246,9 @@ class QLearner:
                     self.training_info.save()
                     self.model.save(self.MODEL_PATH)
 
+                if self.should_exit:
+                    sys.exit(0)
+
             self.random_action_policy.epoch_ended()
+        signal.signal(signal.SIGINT, self.default_sigint_handler)
 
