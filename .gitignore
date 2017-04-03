@@ -6,3 +6,15 @@
 
 # Ignore decisions directory
 decisions/
+
+# intelliJ files
+.idea
+.metadata
+
+# Eclipse
+*/.classpath
+*/.project
+.settings
+
+# Java compiled classes
+bin
