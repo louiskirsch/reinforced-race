@@ -17,9 +17,10 @@ public class CarState : MonoBehaviour {
 	public bool Disqualified { get; private set; }
 	public bool Finished { get; private set; }
 
-	public uint maxTransformHistoryLength = 15;
+	public uint maxTransformHistoryLength = 100;
 	public float transformHistorySaveDistance = 1f;
-	public float resetMinimumDistance = 5f;
+	public float resetMinDistance = 5f;
+	public float resetMaxDistance = 12f;
 
 	private GameObject[] checkpoints;
 	private int checkpointsPassed = 0;
@@ -67,8 +68,11 @@ public class CarState : MonoBehaviour {
 	}
 
 	private TransformState SampleHistoryState() {
-		int prohibitedHistory = (int)(resetMinimumDistance / transformHistorySaveDistance);
-		int historySample = Random.Range(0, System.Math.Max(1, transformHistory.Count - prohibitedHistory));
+		int earliestPermittedSample = System.Math.Max(0, transformHistory.Count -
+										(int)(resetMaxDistance / transformHistorySaveDistance));
+		int latestPermittedSample = System.Math.Max(1, transformHistory.Count -
+										(int)(resetMinDistance / transformHistorySaveDistance));
+		int historySample = Random.Range(earliestPermittedSample, latestPermittedSample);
 
 		// Delete all following history states
 		while(transformHistory.Count - 1 != historySample)

@@ -1,19 +1,20 @@
-import argparse
 import random
+import signal
+import time
 from abc import abstractmethod
 from pathlib import Path
-from typing import Iterable, Any
-import yaml
+from typing import Iterable, Any, Callable
 
 import numpy as np
-import time
+import sys
+import yaml
 from keras.engine import Model
 from keras.layers import Convolution2D, Flatten, Dense, Activation, Dropout, MaxPooling2D
 from keras.models import Sequential, load_model
+from racelearning.memory import Experience, Memory
+from racelearning.utils import RunningAverage
 
-from environment import Action, LeftRightAction, State, EnvironmentInterface
-from memory import Experience, Memory
-from utils import RunningAverage
+from racelearning.environment import State, EnvironmentInterface, StateAssembler
 
 
 class RandomActionPolicy:
@@ -101,7 +102,8 @@ class TrainingInfo:
             self.data = {
                 'episode': 1,
                 'frames': 0,
-                'mean_training_time': 1.0
+                'mean_training_time': 1.0,
+                'batches_per_frame': 1
             }
 
     def __getitem__(self, item):
@@ -121,7 +123,8 @@ class QLearner:
 
     def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
-                 should_load_model: bool, should_load_memory: bool, should_save: bool, action_type: Any):
+                 should_load_model: bool, should_load_memory: bool, should_save: bool, action_type: Any,
+                 create_model: Callable[[Any, int], Model], batches_per_frame: int):
         self.environment = environment
         self.random_action_policy = random_action_policy
         self.image_size = image_size
@@ -129,8 +132,12 @@ class QLearner:
         self.discount = discount
         self.action_type = action_type
         self.should_save = should_save
+        self.should_exit = False
+        self.default_sigint_handler = signal.getsignal(signal.SIGINT)
         self.training_info = TrainingInfo(should_load_model)
         self.mean_training_time = RunningAverage(1000, self.training_info['mean_training_time'])
+        if batches_per_frame:
+            self.training_info['batches_per_frame'] = batches_per_frame
 
         self.memory = Memory(memory_capacity, should_save)
         if should_load_memory:
@@ -139,33 +146,12 @@ class QLearner:
         if should_load_model and Path(self.MODEL_PATH).is_file():
             self.model = load_model(self.MODEL_PATH)
         else:
-            self.model = self._create_model()
+            self.model = create_model((self.image_size, self.image_size, StateAssembler.FRAME_COUNT),
+                                      action_type.COUNT)
 
-    def _create_model(self) -> Model:
-        model = Sequential()
-        model.add(Convolution2D(32, 3, 3, border_mode='valid', input_shape=(self.image_size, self.image_size, 4)))
-        model.add(Activation('relu'))
-        model.add(Convolution2D(32, 3, 3))
-        model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
-
-        model.add(Convolution2D(64, 3, 3, border_mode='valid'))
-        model.add(Activation('relu'))
-        model.add(Convolution2D(64, 3, 3))
-        model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
-
-        model.add(Flatten())
-        model.add(Dense(256))
-        model.add(Activation('relu'))
-        model.add(Dropout(0.5))
-
-        model.add(Dense(self.action_type.COUNT, activation='linear'))
-        model.compile(optimizer='RMSprop', loss='mse', metrics=['mean_squared_error'])
-
-        return model
+    def stop(self, sig, frame):
+        print('Exiting...')
+        self.should_exit = True
 
     def _predict(self, state: State) -> np.ndarray:
         # Add batch dimension
@@ -206,19 +192,25 @@ class QLearner:
         self.mean_training_time.add(end - start)
 
     def predict(self):
+        signal.signal(signal.SIGINT, self.stop)
         while True:
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
             while not state.is_terminal:
                 action = self.action_type.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
                 # Wait as long as we usually need to wait due to training
-                time.sleep(self.training_info['mean_training_time'])
+                time.sleep(self.training_info['batches_per_frame'] *
+                           self.training_info['mean_training_time'])
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
                 state = new_state
 
+                if self.should_exit:
+                    sys.exit(0)
+
     def start_training(self, episodes: int):
+        signal.signal(signal.SIGINT, self.stop)
         start_episode = self.training_info['episode']
         frames_passed = self.training_info['frames']
         for episode in range(start_episode, episodes + 1):
@@ -233,7 +225,8 @@ class QLearner:
                     # noinspection PyTypeChecker
                     action = self.action_type.from_code(np.argmax(self._predict(state)))
                 self.environment.write_action(action)
-                self._train_minibatch()
+                for _ in range(self.training_info['batches_per_frame']):
+                    self._train_minibatch()
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
@@ -241,7 +234,7 @@ class QLearner:
                 frames_passed += 1
 
                 # Print status
-                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {}'
+                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {:.4f}'
                       .format(episode, frames_passed, random_probability,
                               action.vertical, action.horizontal, reward), end='\r')
 
@@ -253,83 +246,9 @@ class QLearner:
                     self.training_info.save()
                     self.model.save(self.MODEL_PATH)
 
+                if self.should_exit:
+                    sys.exit(0)
+
             self.random_action_policy.epoch_ended()
+        signal.signal(signal.SIGINT, self.default_sigint_handler)
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--host', dest='host', type=str, default='localhost',
-                        help='The environment host to connect to')
-    parser.add_argument('--port', dest='port', type=int, default=2851,
-                        help='The environment port to connect to')
-    # Atari memory capacity was 1M
-    # Simulation is highly repetitive, that's why we pick a smaller number by default
-    parser.add_argument('--memory-capacity', dest='memory_capacity', type=int, default=50000,
-                        help='The size of the memory to hold past experiences')
-    parser.add_argument('--image-size', dest='image_size', type=int, default=64,
-                        help='The size of the (square) images to request from the environment')
-    parser.add_argument('--rap-initial', dest='random_action_prob_initial', type=float, default=1.0,
-                        help='The initial probability of choosing a random action instead')
-    parser.add_argument('--rap-target', dest='random_action_prob_target', type=float, default=0.1,
-                        help='The probability of choosing a random action after annealing period has passed')
-    # Atari annealing period was 1M
-    # It seems like there is not much progress being made in that manner, 10k should be enough
-    parser.add_argument('--rap-annealing-period', dest='random_action_prob_annealing_period',
-                        type=int, default=10000,
-                        help='The length of the random action annealing period in frames')
-    parser.add_argument('--rap-annealing', dest='use_rap_annealing', action='store_true',
-                        help='Use an annealing random action policy instead of `terminal distance`')
-    parser.add_argument('--rap-terminal-count', dest='rap_terminal_episode_count',
-                        type=int, default=20,
-                        help='Use the given moving average episode count for the policy')
-    parser.add_argument('--rap-reuse', dest='rap_reuse_prob', type=float, default=0.8,
-                        help='Enable reusing random actions with the given probability')
-    parser.add_argument('--batch-size', dest='batch_size',
-                        type=int, default=32,
-                        help='The minibatch size to use for training')
-    parser.add_argument('--discount', dest='discount',
-                        type=float, default=0.975,
-                        help='The discount to apply to future rewards (gamma)')
-    parser.add_argument('--episodes', dest='episodes', type=int, default=1000000,
-                        help='The number of episodes to learn')
-    parser.add_argument('--load', dest='should_load', action='store_true',
-                        help='Whether to load the model and memory')
-    parser.add_argument('--save', dest='should_save', action='store_true',
-                        help='Whether to save the model and memory')
-    parser.add_argument('--all-actions', dest='action_type', action='store_const',
-                        default=LeftRightAction, const=Action,
-                        help='Allows the car also to decide whether to go forward or backward')
-    parser.add_argument('--no-training', dest='training_enabled', action='store_false',
-                        help='Only drive model car, do not learn')
-    args = parser.parse_args()
-
-    environment = EnvironmentInterface(args.host, args.port)
-
-    if not args.use_rap_annealing:
-        random_action_policy = TerminalDistanceRAPolicy(args.rap_terminal_episode_count)
-    else:
-        random_action_policy = AnnealingRAPolicy(args.random_action_prob_initial,
-                                                 args.random_action_prob_target,
-                                                 args.random_action_prob_annealing_period)
-
-    if args.rap_reuse_prob:
-        random_action_policy = ReuseRAPolicyDecorator(random_action_policy,
-                                                      args.rap_reuse_prob)
-
-    learner = QLearner(environment,
-                       args.memory_capacity,
-                       args.image_size,
-                       random_action_policy,
-                       args.batch_size,
-                       args.discount,
-                       args.should_load,
-                       args.should_load and args.training_enabled,
-                       args.should_save,
-                       args.action_type)
-
-    if args.training_enabled:
-        print("Start training")
-        learner.start_training(args.episodes)
-    else:
-        print("Start driving (without training)")
-        learner.predict()

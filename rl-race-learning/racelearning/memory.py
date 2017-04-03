@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from typing import List
 
-from environment import State, Action
+from racelearning.environment import State, Action
 
 
 class Experience:
