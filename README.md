@@ -16,12 +16,12 @@ The reinforcement learning algorithm is inspired from [Mnhi et al. 2013](https:/
 After starting the virtual environment run
 
 ```
-python3 rl-race-learning/qlearner.py
+python3 rl-race-learning/run.py --save
 ```
 
 The module will connect to the virtual environment using a TCP connection.
 
-See `python3 qlearner.py --help` for more options.
+See `python3 rl-race-learning/run.py --help` for more options.
 
 ## The real model car
 
