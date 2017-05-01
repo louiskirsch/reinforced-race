@@ -1,7 +1,7 @@
 # reinforced-race
 A model car learns driving along a track using reinforcement learning
 
-[![Youtube video of car driving a track](https://img.youtube.com/vi/P-jtA8LqQHw/0.jpg)](https://www.youtube.com/watch?v=P-jtA8LqQHw)
+[![Youtube video of car driving a track](https://cloud.githubusercontent.com/assets/5778449/25595421/0e25145e-2ec5-11e7-9dbb-2ed140c72e93.png)](https://www.youtube.com/watch?v=Arva_SUTaw0)
 
 ## Unity virtual environment
 
