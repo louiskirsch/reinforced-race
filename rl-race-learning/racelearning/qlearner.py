@@ -121,12 +121,13 @@ class QLearner:
 
     MODEL_PATH = 'actionValue.model'
 
-    def __init__(self, environment: EnvironmentInterface, memory_capacity: int, image_size: int,
+    def __init__(self, environment: EnvironmentInterface, memory: Memory, image_size: int,
                  random_action_policy: RandomActionPolicy, batch_size: int, discount: float,
-                 should_load_model: bool, should_load_memory: bool, should_save: bool, action_type: Any,
+                 should_load_model: bool, should_save: bool, action_type: Any,
                  create_model: Callable[[Any, int], Model], batches_per_frame: int):
         self.environment = environment
         self.random_action_policy = random_action_policy
+        self.memory = memory
         self.image_size = image_size
         self.batch_size = batch_size
         self.discount = discount
@@ -138,10 +139,6 @@ class QLearner:
         self.mean_training_time = RunningAverage(1000, self.training_info['mean_training_time'])
         if batches_per_frame:
             self.training_info['batches_per_frame'] = batches_per_frame
-
-        self.memory = Memory(memory_capacity, should_save)
-        if should_load_memory:
-            self.memory.load()
 
         if should_load_model and Path(self.MODEL_PATH).is_file():
             self.model = load_model(self.MODEL_PATH)

@@ -4,6 +4,7 @@ import argparse
 
 from racelearning import models
 from racelearning.environment import LeftRightAction, Action, EnvironmentInterface
+from racelearning.memory import Memory
 from racelearning.qlearner import AnnealingRAPolicy, QLearner
 from racelearning.qlearner import TerminalDistanceRAPolicy, ReuseRAPolicyDecorator
 
@@ -76,14 +77,18 @@ if args.rap_reuse_prob:
     random_action_policy = ReuseRAPolicyDecorator(random_action_policy,
                                                   args.rap_reuse_prob)
 
+
+memory = Memory(args.memory_capacity, args.should_save)
+if args.should_load and args.training_enabled:
+    memory.load()
+
 learner = QLearner(environment,
-                   args.memory_capacity,
+                   memory,
                    args.image_size,
                    random_action_policy,
                    args.batch_size,
                    args.discount,
                    args.should_load,
-                   args.should_load and args.training_enabled,
                    args.should_save,
                    args.action_type,
                    args.model_creator,
