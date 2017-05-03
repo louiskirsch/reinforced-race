@@ -214,7 +214,7 @@ class QLearner:
             self.random_action_policy.epoch_started()
             # Set initial state
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
-            episode_start_frame = frames_passed
+            episode_start_time = time.time()
             while not state.is_terminal:
                 random_probability = self.random_action_policy.get_probability(frames_passed)
                 if random.random() < random_probability:
@@ -236,9 +236,12 @@ class QLearner:
                 frames_passed += 1
 
                 # Print status
-                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {:.4f}'
+                time_since_failure = time.time() - episode_start_time
+                print('Episode {}, Total frames {}, ε={:.4f}, Action (v={:+d}, h={:+d}), Reward {:.4f}, '
+                      '{:.0f}s since failure'
                       .format(episode, frames_passed, random_probability,
-                              action.vertical, action.horizontal, reward), end='\r')
+                              action.vertical, action.horizontal, reward,
+                              time_since_failure), end='\r')
 
                 # Save model after a fixed amount of frames
                 if self.should_save and frames_passed % 1000 == 0:
