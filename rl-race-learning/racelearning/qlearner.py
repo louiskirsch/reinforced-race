@@ -214,6 +214,7 @@ class QLearner:
             self.random_action_policy.epoch_started()
             # Set initial state
             state = self.environment.read_sensors(self.image_size, self.image_size)[0]
+            episode_start_frame = frames_passed
             while not state.is_terminal:
                 random_probability = self.random_action_policy.get_probability(frames_passed)
                 if random.random() < random_probability:
@@ -227,6 +228,10 @@ class QLearner:
                 new_state, reward = self.environment.read_sensors(self.image_size, self.image_size)
                 experience = Experience(state, action, reward, new_state)
                 self.memory.append_experience(experience)
+
+                if new_state.is_terminal:
+                    self.memory.report_failure()
+
                 state = new_state
                 frames_passed += 1
 
