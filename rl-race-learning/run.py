@@ -4,6 +4,7 @@ import argparse
 
 from racelearning import models
 from racelearning.environment import LeftRightAction, Action, EnvironmentInterface
+from racelearning.memory import Memory, EmotionalMemory
 from racelearning.qlearner import AnnealingRAPolicy, QLearner
 from racelearning.qlearner import TerminalDistanceRAPolicy, ReuseRAPolicyDecorator
 
@@ -34,6 +35,9 @@ parser.add_argument('--rap-terminal-count', dest='rap_terminal_episode_count',
                     help='Use the given moving average episode count for the policy')
 parser.add_argument('--rap-reuse', dest='rap_reuse_prob', type=float, default=0.8,
                     help='Enable reusing random actions with the given probability')
+parser.add_argument('--emotional-memory', dest='emotional_memory_length', type=int, default=0,
+                    help='Enable emotional memory that highlights previous failures'
+                         'with the given length in frames per event')
 parser.add_argument('--batch-size', dest='batch_size',
                     type=int, default=32,
                     help='The minibatch size to use for training')
@@ -76,14 +80,22 @@ if args.rap_reuse_prob:
     random_action_policy = ReuseRAPolicyDecorator(random_action_policy,
                                                   args.rap_reuse_prob)
 
+
+if args.emotional_memory_length:
+    memory = EmotionalMemory(args.memory_capacity, args.should_save, args.emotional_memory_length)
+else:
+    memory = Memory(args.memory_capacity, args.should_save)
+
+if args.should_load and args.training_enabled:
+    memory.load()
+
 learner = QLearner(environment,
-                   args.memory_capacity,
+                   memory,
                    args.image_size,
                    random_action_policy,
                    args.batch_size,
                    args.discount,
                    args.should_load,
-                   args.should_load and args.training_enabled,
                    args.should_save,
                    args.action_type,
                    args.model_creator,
