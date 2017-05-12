@@ -1,5 +1,5 @@
 matplotlib
 PyYAML
-h5py==2.6.0
-Keras==1.2.0
-numpy==1.12.0
+h5py>=2.6.0
+Keras>=1.2.0
+numpy>=1.12.0
